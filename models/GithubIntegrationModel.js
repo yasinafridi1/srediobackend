@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const githubIntegrationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   githubId: Number,
   githubUsername: String,
   githubFullName: String,
@@ -16,6 +17,11 @@ const githubIntegrationSchema = new mongoose.Schema({
       ref: "GithubOrganizations",
     },
   ],
+  dataSync: {
+    type: String,
+    enum: ["PENDING", "COMPLETED"],
+    default: "COMPLETED",
+  },
 });
 
 const GithubIntegration = mongoose.model(

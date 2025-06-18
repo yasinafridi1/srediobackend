@@ -14,6 +14,7 @@ import { Octokit } from "@octokit/rest";
 import { envVariables } from "../config/constants.js";
 import GithubIntegration from "../models/GithubIntegrationModel.js";
 import GithubOrganizations from "../models/GithubOrganizations.js";
+import { syncFullGithubData } from "../helpers/githubDataSync.js";
 const { frontendUrl, githubCallbackUrl, githubClientId, githubClientSecret } =
   envVariables;
 
@@ -143,7 +144,8 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
   const accessToken = authentication.token;
   const octokit = new Octokit({ auth: accessToken });
   const { data: user } = await octokit.rest.users.getAuthenticated();
-  const { data: orgs } = await octokit.rest.orgs.listForAuthenticatedUser();
+  const { data: orgs = [] } =
+    await octokit.rest.orgs.listForAuthenticatedUser();
 
   let insertedOrgs = [];
   if (orgs?.length > 0) {
@@ -158,6 +160,7 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
   }
 
   const integration = new GithubIntegration({
+    userId: state,
     githubId: user.id,
     githubAccessToken: accessToken,
     githubUsername: user?.login,
@@ -176,9 +179,22 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
   }
   await UserModel.updateOne({ _id: state }, { github: result._id });
 
+  if (insertedOrgs.length > 0) {
+    await GithubIntegration.updateOne(
+      { _id: result._id },
+      { dataSync: "PENDING" }
+    );
+    setImmediate(() => {
+      syncFullGithubData(octokit, insertedOrgs, state, result._id).catch(
+        (error) => {
+          console.error("Error syncing GitHub data:", error);
+        }
+      );
+    });
+  }
+
   const dbUser = await UserModel.findById(state).select().populate("github");
   const userData = userDto(dbUser);
-
   res.cookie("user", JSON.stringify(userData), {
     httpOnly: false,
     secure: false, // true in production (HTTPS)

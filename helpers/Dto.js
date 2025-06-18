@@ -1,3 +1,5 @@
+import { formatDateTime } from "./DateTimeFormatter.js";
+
 const githubUserDto = (data) => {
   const {
     githubId,
@@ -9,6 +11,7 @@ const githubUserDto = (data) => {
     private_repos,
     connectedAt,
     orgs,
+    dataSync,
   } = data;
 
   return {
@@ -19,8 +22,9 @@ const githubUserDto = (data) => {
     followers,
     following,
     private_repos,
-    connectedAt,
+    connectedAt: formatDateTime(connectedAt),
     organizations: orgs?.length || 0,
+    dataSync,
   };
 };
 
