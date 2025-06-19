@@ -4,7 +4,7 @@ const GithubMemberSchema = new mongoose.Schema(
   {
     org: { type: mongoose.Schema.Types.ObjectId, ref: "GithubOrganizations" },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    raw: mongoose.Schema.Types.Mixed, // Full member object
+    rawData: mongoose.Schema.Types.Mixed, // Full member object
   },
   { timestamps: true }
 );

@@ -15,7 +15,7 @@ const router = Router();
 router.post("/login", validateBody(loginSchema), login);
 router.post("/register", validateBody(registerSchema), register);
 router.post("/auto-login", autoLogin);
-router.get("/logout", logout);
+router.get("/logout", auth, logout);
 router.get("/github/login", auth, githubLogin);
 router.get("/github/callback", githubCallback);
 export default router;

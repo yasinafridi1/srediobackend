@@ -36,6 +36,6 @@ app.use((req, res, next) => {
 
 app.use(ErrorMiddleware);
 
-app.listen(appPort, async () => {
+app.listen(appPort, () => {
   console.log(`Listening to port ${appPort}`);
 });

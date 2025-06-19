@@ -115,7 +115,7 @@ export const autoLogin = AsyncWrapper(async (req, res, next) => {
 });
 
 export const logout = AsyncWrapper(async (req, res, next) => {
-  const { _id, role } = req.user;
+  const { _id } = req.user;
   await UserModel.findByIdAndUpdate(_id, {
     accessToken: null,
     refreshToken: null,
@@ -132,7 +132,7 @@ export const githubLogin = AsyncWrapper(async (req, res, next) => {
   const response = oauthApp.getWebFlowAuthorizationUrl({
     scopes: ["read:org", "repo", "user"],
     state: req.user._id,
-  }); // Log the URL for debugging
+  });
   return SuccessMessage(res, "Redirecting to GitHub", {
     redirectUrl: response.url,
   });
@@ -151,9 +151,8 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
   if (orgs?.length > 0) {
     const orgsData = orgs.map((org) => {
       return {
-        login: org.login,
-        orgId: org.id,
-        repos_url: org.repos_url,
+        userId: state,
+        rawData: org,
       };
     });
     insertedOrgs = await GithubOrganizations.insertMany(orgsData);
@@ -185,11 +184,13 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
       { dataSync: "PENDING" }
     );
     setImmediate(() => {
-      syncFullGithubData(octokit, insertedOrgs, state, result._id).catch(
-        (error) => {
+      syncFullGithubData(octokit, insertedOrgs, state, result._id)
+        .then(() => {
+          console.log("GitHub data synced successfully for user:");
+        })
+        .catch((error) => {
           console.error("Error syncing GitHub data:", error);
-        }
-      );
+        });
     });
   }
 
