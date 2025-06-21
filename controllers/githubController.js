@@ -18,7 +18,11 @@ export const getGithubCollections = AsyncWrapper(async (req, res, next) => {
 
   const collections = await mongoose.connection.db.listCollections().toArray();
   const collectionNames = collections
-    .filter((col) => col.name.toLowerCase().includes("github"))
+    .filter(
+      (col) =>
+        col.name.toLowerCase().includes("github") &&
+        col.name.toLowerCase() !== "githubintegrations"
+    )
     .map((col) => col.name);
 
   return SuccessMessage(res, "Collection fetched successfully", {
@@ -35,7 +39,11 @@ export const getCollectionDetail = AsyncWrapper(async (req, res, next) => {
 
   const collections = await mongoose.connection.db.listCollections().toArray();
   const collectionNames = collections
-    .filter((col) => col.name.toLowerCase().includes("github"))
+    .filter(
+      (col) =>
+        col.name.toLowerCase().includes("github") &&
+        col.name.toLowerCase() !== "githubintegrations"
+    )
     .map((col) => col.name);
 
   const matchedCollection = collectionNames.find(
@@ -56,9 +64,16 @@ export const getCollectionDetail = AsyncWrapper(async (req, res, next) => {
     .limit(parseInt(limit))
     .toArray();
 
-  console.log("Dataa ==>", data);
+  const flateStage1 = (data) => {
+    return {
+      _id: data._id,
+      userId: data?.userId,
+      ...(data?.repo && { repo: data?.repo }),
+      ...data.rawData,
+    };
+  };
 
-  const flattenObject = (obj, prefix = "") => {
+  const flateStage2 = (obj, prefix = "") => {
     return Object.keys(obj).reduce((acc, key) => {
       const value = obj[key];
       const prefixedKey = prefix ? `${prefix}_${key}` : key;
@@ -71,12 +86,12 @@ export const getCollectionDetail = AsyncWrapper(async (req, res, next) => {
           acc[prefixedKey] = value.join(", ");
         } else {
           value.forEach((el, idx) => {
-            const nested = flattenObject(el, `${prefixedKey}[${idx}]`);
+            const nested = flateStage2(el, `${prefixedKey}[${idx}]`);
             Object.assign(acc, nested);
           });
         }
       } else if (typeof value === "object" && value !== null) {
-        Object.assign(acc, flattenObject(value, prefixedKey));
+        Object.assign(acc, flateStage2(value, prefixedKey));
       } else {
         acc[prefixedKey] = value;
       }
@@ -85,7 +100,8 @@ export const getCollectionDetail = AsyncWrapper(async (req, res, next) => {
     }, {});
   };
 
-  data = data.map((item) => flattenObject(item));
+  data = data.map((item) => flateStage1(item));
+  // data = data.map((item) => flateStage2(item));
   const total = await CollectionModel.countDocuments({
     userId: new mongoose.Types.ObjectId(userId),
   });
