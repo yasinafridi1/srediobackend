@@ -15,14 +15,19 @@ import { envVariables } from "../config/constants.js";
 import GithubIntegration from "../models/GithubIntegrationModel.js";
 import GithubOrganizations from "../models/GithubOrganizations.js";
 import { syncFullGithubData } from "../helpers/githubDataSync.js";
-const { frontendUrl, githubCallbackUrl, githubClientId, githubClientSecret } =
-  envVariables;
+const { frontendUrl, githubClientId, githubClientSecret } = envVariables;
 
 const oauthApp = new OAuthApp({
   clientType: "oauth-app",
   clientId: githubClientId,
   clientSecret: githubClientSecret,
 });
+
+// await oauthApp.deleteAuthorization({
+//   clientId: githubClientId,
+//   clientSecret: githubClientSecret,
+//   token: user.github.accessToken,
+// });
 
 export const login = AsyncWrapper(async (req, res, next) => {
   const { email, password } = req.body;
@@ -204,4 +209,12 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
   });
 
   return res.redirect(`${frontendUrl}/profile`);
+});
+
+export const deleteGithubData = AsyncWrapper(async (req, res, next) => {
+  const userId = req.user._id;
+  const userData = await UserModel.findById(userId).populate("github");
+  if (!userData) {
+    return next(new ErrorHandler("User not found", 400));
+  }
 });
