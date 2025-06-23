@@ -15,6 +15,12 @@ import { envVariables } from "../config/constants.js";
 import GithubIntegration from "../models/GithubIntegrationModel.js";
 import GithubOrganizations from "../models/GithubOrganizations.js";
 import { syncFullGithubData } from "../helpers/githubDataSync.js";
+import GithubRepositoryModel from "../models/GithubRepositoryModel.js";
+import GithubCommit from "../models/GithubCommitsModel.js";
+import GithubPullModel from "../models/GithubPullModel.js";
+import GithubIssuesModel from "../models/GithubIssuesModel.js";
+import GithubIssueEventModel from "../models/GithubIssueEventModel.js";
+import GithubMemberModel from "../models/GithubMemberModel.js";
 const { frontendUrl, githubClientId, githubClientSecret } = envVariables;
 
 const oauthApp = new OAuthApp({
@@ -22,12 +28,6 @@ const oauthApp = new OAuthApp({
   clientId: githubClientId,
   clientSecret: githubClientSecret,
 });
-
-// await oauthApp.deleteAuthorization({
-//   clientId: githubClientId,
-//   clientSecret: githubClientSecret,
-//   token: user.github.accessToken,
-// });
 
 export const login = AsyncWrapper(async (req, res, next) => {
   const { email, password } = req.body;
@@ -214,7 +214,31 @@ export const githubCallback = AsyncWrapper(async (req, res, next) => {
 export const deleteGithubData = AsyncWrapper(async (req, res, next) => {
   const userId = req.user._id;
   const userData = await UserModel.findById(userId).populate("github");
+
   if (!userData) {
     return next(new ErrorHandler("User not found", 400));
   }
+
+  if (!userData.github) {
+    return next(new ErrorHandler("GitHub data not found for user", 400));
+  }
+
+  await oauthApp.deleteAuthorization({
+    clientId: githubClientId,
+    clientSecret: githubClientSecret,
+    token: userData.github.githubAccessToken,
+  });
+
+  await GithubIntegration.deleteOne({ userId });
+  await GithubOrganizations.deleteMany({ userId });
+  await GithubRepositoryModel.deleteMany({ userId });
+  await GithubCommit.deleteMany({ userId });
+  await GithubPullModel.deleteMany({ userId });
+  await GithubIssuesModel.deleteMany({ userId });
+  await GithubIssueEventModel.deleteMany({ userId });
+  await GithubMemberModel.deleteMany({ userId });
+
+  userData.github = null;
+  await userData.save();
+  return SuccessMessage(res, "user github data removed successfully");
 });
