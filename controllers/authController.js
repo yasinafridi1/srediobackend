@@ -21,6 +21,7 @@ import GithubPullModel from "../models/GithubPullModel.js";
 import GithubIssuesModel from "../models/GithubIssuesModel.js";
 import GithubIssueEventModel from "../models/GithubIssueEventModel.js";
 import GithubMemberModel from "../models/GithubMemberModel.js";
+import SubscriptionModel from "../models/SubscriptionModel.js";
 const { frontendUrl, githubClientId, githubClientSecret } = envVariables;
 
 const oauthApp = new OAuthApp({
@@ -30,7 +31,7 @@ const oauthApp = new OAuthApp({
 });
 
 export const login = AsyncWrapper(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password, subscription } = req.body;
   const user = await UserModel.findOne({ email }).populate("github");
   if (!user) {
     return next(new ErrorHandler("Invalid email or password", 422));
@@ -58,6 +59,13 @@ export const login = AsyncWrapper(async (req, res, next) => {
     return next(new ErrorHandler("Invalid email or password", 422));
   }
 
+  if (subscription) {
+    await SubscriptionModel.updateOne(
+      { userId: user._id },
+      { $set: { subscription } },
+      { upsert: true }
+    );
+  }
   // Reset passwordTries and lockUntil on successful login
   user.passwordTries = 0;
   user.lockUntil = null;
@@ -71,6 +79,7 @@ export const login = AsyncWrapper(async (req, res, next) => {
   const userData = userDto(user);
 
   await storeTokens(accessToken, refreshToken, user._id);
+
   return SuccessMessage(
     res,
     "Logged in successfully",

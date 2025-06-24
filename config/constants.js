@@ -10,9 +10,24 @@ export const envVariables = {
   githubClientId: process.env.GITHUB_CLIENT_ID,
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET,
   githubCallbackUrl: process.env.GITHUB_CALLBACK_URL,
+  vapidPublickey: process.env.VAPID_PUBLIC_KEY,
+  vapidPrivatekey: process.env.VAPID_PRIVATE_KEY,
 };
 
 export const ROLES = {
   USER: 2,
   ADMIN: 1,
+};
+
+export const notificationMessages = {
+  syncDataSuccess: {
+    notification: {
+      title: "Data Sync",
+      body: "Your data has been synced successfully",
+      icon: "/assets/icons/icon.png",
+    },
+    data: {
+      url: `${envVariables.frontendUrl}/repos`,
+    },
+  },
 };

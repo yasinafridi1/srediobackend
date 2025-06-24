@@ -1,4 +1,3 @@
-import { Octokit } from "@octokit/rest";
 import GithubCommit from "../models/GithubCommitsModel.js";
 import GithubIntegration from "../models/GithubIntegrationModel.js";
 import GithubIssueEventModel from "../models/GithubIssueEventModel.js";
@@ -13,6 +12,7 @@ import {
   structurePull,
   structureRepo,
 } from "./StructureGithubData.js";
+import sendGithubSyncNotification from "./NotificationService.js";
 
 var octokit;
 var userId;
@@ -166,6 +166,8 @@ const markSyncComplete = async (githubDocId) => {
   await GithubIntegration.findByIdAndUpdate(githubDocId, {
     dataSync: "COMPLETED",
   });
+
+  await sendGithubSyncNotification(userId);
 };
 
 export const syncFullGithubData = async (

@@ -26,6 +26,7 @@ const fullNameSchema = Joi.string().required().max(70);
 export const loginSchema = Joi.object({
   email: emailSchema,
   password: passwordSchema,
+  subscription: Joi.any().optional(),
 });
 
 export const registerSchema = Joi.object({
