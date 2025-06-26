@@ -24,10 +24,18 @@ export const notificationMessages = {
     notification: {
       title: "Data Sync",
       body: "Your data has been synced successfully",
-      icon: "/assets/icons/icon.png",
     },
     data: {
       url: `${envVariables.frontendUrl}/repos`,
+    },
+  },
+  syncDataFailure: {
+    notification: {
+      title: "Data Sync failure",
+      body: "Something went wrong while syncing data.",
+    },
+    data: {
+      url: `${envVariables.frontendUrl}/profile`,
     },
   },
 };

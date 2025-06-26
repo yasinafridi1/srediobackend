@@ -10,11 +10,18 @@ webpush.setVapidDetails(
 );
 
 async function sendGithubSyncNotification(userId) {
-  console.log("UsreId", userId);
   const subscriptionData = await SubscriptionModel.findOne({ userId });
   await webpush.sendNotification(
     subscriptionData.subscription,
     JSON.stringify(notificationMessages.syncDataSuccess)
+  );
+}
+
+export async function sendGithubSyncFailureNotification(userId) {
+  const subscriptionData = await SubscriptionModel.findOne({ userId });
+  await webpush.sendNotification(
+    subscriptionData.subscription,
+    JSON.stringify(notificationMessages.syncDataFailure)
   );
 }
 

@@ -12,66 +12,60 @@ import {
   structurePull,
   structureRepo,
 } from "./StructureGithubData.js";
-import sendGithubSyncNotification from "./NotificationService.js";
+import sendGithubSyncNotification, {
+  sendGithubSyncFailureNotification,
+} from "./NotificationService.js";
 
 var octokit;
 var userId;
-var startDate;
-const endDate = new Date();
 var repoDocId;
 let issueEventsData = [];
 
-const fetchItemsByDateRange = async (fetchFn, params = {}) => {
-  const allItems = [];
-  let page = 1;
-  const per_page = 100;
+const fetchWithRetry = async (fn, retries = 3, delay = 2000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRetriable =
+        error.code === "ECONNRESET" ||
+        error.status === 503 ||
+        error.message.includes("Connection refused");
 
-  while (true) {
-    const { data } = await fetchFn({ ...params, page, per_page });
-    if (!data || data.length === 0) break;
-
-    allItems.push(...data);
-    if (data.length < per_page) break;
-    page++;
+      if (isRetriable && attempt < retries) {
+        console.warn(
+          `Request failed (${
+            error.code || error.status
+          }). Retrying in ${delay}ms... (Attempt ${attempt}/${retries})`
+        );
+        await new Promise((r) => setTimeout(r, delay * attempt));
+      } else {
+        console.error(
+          `Request failed after ${attempt} attempt(s): ${error.message}`
+        );
+      }
+    }
   }
-  return allItems;
 };
 
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-const fetchCommitsByDateRange = async (repo) => {
+const paginateCommits = async (repo) => {
   const commits = [];
-  let currentStart = new Date(startDate);
-  const chunkDays = 7;
-
-  while (currentStart < endDate) {
-    const since = currentStart.toISOString();
-    const untilDate = addDays(currentStart, chunkDays);
-    const until =
-      untilDate < endDate ? untilDate.toISOString() : endDate.toISOString();
-
-    console.log(`Fetching commits from ${since} to ${until}`);
-    const chunkCommits = await fetchItemsByDateRange(
-      octokit.rest.repos.listCommits,
-      {
-        owner: repo.owner.login,
-        repo: repo.name,
-        since,
-        until,
-      }
-    );
-    commits.push(...chunkCommits);
-    currentStart = untilDate;
-  }
+  const chunkCommits = await octokit.paginate(
+    "GET /repos/{owner}/{repo}/commits",
+    {
+      owner: repo.owner.login,
+      repo: repo.name,
+      per_page: 100,
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+  commits.push(...chunkCommits);
   return commits;
 };
 
 const processCommits = async (repo) => {
-  const commits = await fetchCommitsByDateRange(repo);
+  const commits = await paginateCommits(repo);
   const commitsToInsertArray = structureCommits(userId, repoDocId, commits);
   await GithubCommit.insertMany(commitsToInsertArray);
 };
@@ -80,24 +74,26 @@ const processIssueEvents = async (repo, issueNumber, issueId) => {
   console.log(
     `Processing events for issue #${issueNumber} in repo ${repo.name}`
   );
-  const issuesEvents = await octokit.paginate(
-    "GET /repos/{owner}/{repo}/issues/{issue_number}/events",
-    {
+
+  const issuesEvents = await fetchWithRetry(() =>
+    octokit.paginate("GET /repos/{owner}/{repo}/issues/{issue_number}/events", {
       owner: repo.owner.login,
       repo: repo.name,
       issue_number: issueNumber,
       per_page: 100,
       mediaType: {
-        previews: ["mockingbird"], // Required for timeline endpoint
+        previews: ["mockingbird"],
       },
       headers: {
         "X-GitHub-Api-Version": "2022-11-28",
       },
-    }
+    })
   );
 
-  const eventToInsertedArray = structureEvents(userId, issueId, issuesEvents);
-  issueEventsData.push(eventToInsertedArray);
+  if (issuesEvents.length) {
+    const eventToInsertedArray = structureEvents(userId, issueId, issuesEvents);
+    issueEventsData.push(...eventToInsertedArray);
+  }
 };
 
 const processPullRequests = async (repo) => {
@@ -138,7 +134,6 @@ const processIssues = async (repo) => {
 const processRepository = async (repo, orgId) => {
   const structureRepoData = structureRepo(userId, orgId, repo);
   const repoDoc = await GithubRepositoryModel.insertOne(structureRepoData);
-  startDate = new Date(repo.created_at);
   repoDocId = repoDoc._id;
   await processCommits(repo);
   await processPullRequests(repo);
@@ -197,6 +192,7 @@ export const syncFullGithubData = async (
       await markSyncComplete(githubDocId);
     }
   } catch (error) {
+    await sendGithubSyncFailureNotification(userId);
     console.log("Error while syncing data");
     console.log(error);
   }
