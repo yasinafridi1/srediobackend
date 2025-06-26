@@ -7,9 +7,6 @@ export const envVariables = {
   shortTokenSecret: process.env.SHORT_TOKEN_SECRET,
   mongoDbURI: process.env.MONGODB_URI,
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:4200",
-  githubClientId: process.env.GITHUB_CLIENT_ID,
-  githubClientSecret: process.env.GITHUB_CLIENT_SECRET,
-  githubCallbackUrl: process.env.GITHUB_CALLBACK_URL,
   vapidPublickey: process.env.VAPID_PUBLIC_KEY,
   vapidPrivatekey: process.env.VAPID_PRIVATE_KEY,
 };

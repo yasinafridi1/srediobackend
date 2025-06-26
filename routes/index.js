@@ -1,6 +1,5 @@
 import { Router } from "express";
 import AuthRoutes from "./AuthRoutes.js";
-import GithubRoutes from "./GithubRoutes.js";
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -8,6 +7,5 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/auth", AuthRoutes);
-router.use("/github", GithubRoutes);
 
 export default router;
