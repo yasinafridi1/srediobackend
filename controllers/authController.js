@@ -13,7 +13,7 @@ import SubscriptionModel from "../models/SubscriptionModel.js";
 
 export const login = AsyncWrapper(async (req, res, next) => {
   const { email, password, subscription } = req.body;
-  const user = await UserModel.findOne({ email }).populate("github");
+  const user = await UserModel.findOne({ email }).populate("airTable");
   if (!user) {
     return next(new ErrorHandler("Invalid email or password", 422));
   }
@@ -99,7 +99,8 @@ export const autoLogin = AsyncWrapper(async (req, res, next) => {
   });
 
   await storeTokens(accessToken, refreshToken, user._id, user.role);
-  const dbUser = await UserModel.findById(user._id).populate("github");
+  const dbUser = await UserModel.findById(user._id).populate("airTable");
+  console.log("DB USER ==>", dbUser);
   const userData = userDto(dbUser);
 
   return SuccessMessage(res, "Logged in successfully", {

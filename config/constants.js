@@ -9,6 +9,9 @@ export const envVariables = {
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:4200",
   vapidPublickey: process.env.VAPID_PUBLIC_KEY,
   vapidPrivatekey: process.env.VAPID_PRIVATE_KEY,
+  airtableClientId: process.env.AIRTABLE_CLIENT_ID,
+  airtableClientSecret: process.env.AIRTABLE_CLIENT_SECRET,
+  airtableCallback: process.env.AIRTABLE_CALLBACK,
 };
 
 export const ROLES = {

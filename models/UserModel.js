@@ -38,9 +38,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null, // Date after which the account unlocks
     },
-    github: {
+    airTable: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "GithubIntegration",
+      ref: "AirtableIntegration",
       default: null,
     },
   },

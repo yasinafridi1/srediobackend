@@ -34,6 +34,6 @@ export const userDto = (user) => {
     fullName: user.fullName,
     email: user.email,
     role: user.role,
-    github: user.github ? githubUserDto(user.github) : null,
+    airTable: user?.airTable ? user.airTable.dataSync : null,
   };
 };

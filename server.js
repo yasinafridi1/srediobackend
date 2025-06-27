@@ -9,7 +9,7 @@ import mongoose from "mongoose";
 const { mongoDbURI, appPort, frontendUrl } = envVariables;
 const app = express();
 
-const allowedUrls = ["https://github.com", frontendUrl];
+const allowedUrls = ["https://airtable.com", frontendUrl];
 
 app.use(express.json());
 app.use(

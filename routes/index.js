@@ -1,5 +1,6 @@
 import { Router } from "express";
 import AuthRoutes from "./AuthRoutes.js";
+import AirTableRoutes from "./AirtableRoutes.js";
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -7,5 +8,6 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/auth", AuthRoutes);
+router.use("/airtable", AirTableRoutes);
 
 export default router;
