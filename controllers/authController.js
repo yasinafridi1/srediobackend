@@ -100,7 +100,6 @@ export const autoLogin = AsyncWrapper(async (req, res, next) => {
 
   await storeTokens(accessToken, refreshToken, user._id, user.role);
   const dbUser = await UserModel.findById(user._id).populate("airTable");
-  console.log("DB USER ==>", dbUser);
   const userData = userDto(dbUser);
 
   return SuccessMessage(res, "Logged in successfully", {

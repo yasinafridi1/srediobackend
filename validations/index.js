@@ -29,6 +29,16 @@ export const loginSchema = Joi.object({
   subscription: Joi.any().optional(),
 });
 
+export const airtableLoginSchema = Joi.object({
+  email: emailSchema,
+  password: Joi.string().required(),
+});
+
+export const airtableMFASchema = Joi.object({
+  code: Joi.string().required(),
+  sessionId: Joi.string().required(),
+});
+
 export const registerSchema = Joi.object({
   fullName: fullNameSchema,
   email: emailSchema,

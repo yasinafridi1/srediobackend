@@ -6,6 +6,9 @@ import crypto from "crypto";
 import AirTableModel from "../models/AirTableTokens.js";
 import UserModel from "../models/UserModel.js";
 import syncAirTableData from "../helpers/AirTableDataSync.js";
+import { randomUUID } from "crypto";
+import puppeteer from "puppeteer";
+import ErrorHandler from "../helpers/ErrorHandler.js";
 const {
   airtableCallback,
   airtableClientId,
@@ -27,6 +30,7 @@ function sha256(buffer) {
 
 const stateStore = new Map();
 const codeVerifierStore = new Map();
+const sessionMap = new Map();
 
 const config = {
   client: {
@@ -108,4 +112,159 @@ export const airTableCallBack = AsyncWrapper(async (req, res, next) => {
 
   await UserModel.updateOne({ _id: state }, { airTable: result._id });
   return res.redirect(`${frontendUrl}/profile`);
+});
+
+export const startScrapping = AsyncWrapper(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  const browser = await puppeteer.launch({ headless: false });
+  const page = await browser.newPage();
+
+  await page.goto("https://airtable.com/login", { waitUntil: "networkidle2" });
+  await page.type('input[type="email"]', email);
+  await page.click('button[type="submit"]');
+
+  const emailCheckResult = await Promise.race([
+    // Valid email → page moves to password
+    page
+      .waitForFunction(() => window.location.hash === "#password", {
+        timeout: 30000,
+      })
+      .then(() => "valid")
+      .catch(() => null),
+
+    // Invalid email → error message appears
+    page
+      .waitForFunction(
+        () => {
+          const error = Array.from(
+            document.querySelectorAll('div[role="paragraph"]')
+          ).find((el) =>
+            el.textContent?.includes(
+              "The email you entered does not belong to any account"
+            )
+          );
+          return !!error;
+        },
+        { timeout: 30000 }
+      )
+      .then(() => "invalid")
+      .catch(() => null),
+  ]);
+
+  if (emailCheckResult !== "valid") {
+    await browser.close();
+    return next(new ErrorHandler("Invalid email address", 400));
+  }
+
+  await page.type('input[type="password"]', password);
+
+  await page.click('button[type="submit"]');
+
+  // Wait for either MFA, navigation, or password error
+  const loginCheckResult = await Promise.race([
+    // MFA input appears
+    page
+      .waitForSelector('input[name="code"]', { timeout: 30000 })
+      .then(() => "mfa")
+      .catch(() => null),
+
+    // Navigation = success
+    page
+      .waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 })
+      .then(() => "success")
+      .catch(() => null),
+
+    // Password error appears
+    page
+      .waitForFunction(
+        () => {
+          const error = Array.from(
+            document.querySelectorAll('div[role="paragraph"]')
+          ).find(
+            (el) => el.textContent?.trim().toLowerCase() === "invalid password"
+          );
+          return !!error;
+        },
+        { timeout: 30000 }
+      )
+      .then(() => "invalid-password")
+      .catch(() => null),
+  ]);
+
+  if (loginCheckResult === "invalid-password") {
+    await browser.close();
+    return next(new ErrorHandler("Invalid password. Please try again.", 400));
+  }
+
+  if (loginCheckResult === "mfa") {
+    const sessionId = randomUUID();
+    sessionMap.set(sessionId, { browser, page });
+    return SuccessMessage(res, "MFA Activated", {
+      mfa: { required: true },
+      sessionId,
+    });
+  }
+
+  return SuccessMessage(res, "Scrapping started successfully", {
+    mfa: { required: false },
+  });
+});
+
+export const verifyMFA = AsyncWrapper(async (req, res, next) => {
+  const { sessionId, code } = req.body;
+  const session = sessionMap.get(sessionId);
+  if (!session) {
+    return res.status(400).json({ error: "Invalid or expired session ID" });
+  }
+
+  const { page, browser } = session;
+  // Clear the input before typing the code (optional, in case of retries)
+  await page.evaluate(() => {
+    const input = document.querySelector('input[name="code"]');
+    if (input) input.value = "";
+  });
+
+  await page.type('input[name="code"]', code, { delay: 300 });
+  await page.keyboard.press("Enter");
+
+  const mfaResult = await Promise.race([
+    page
+      .waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 })
+      .then(() => "success")
+      .catch(() => null),
+
+    page
+      .waitForFunction(
+        () => {
+          const el = Array.from(
+            document.querySelectorAll("div.small.strong.quiet")
+          ).find((e) => e.textContent?.trim().toLowerCase() === "invalid code");
+          return !!el;
+        },
+        { timeout: 15000 }
+      )
+      .then(() => "invalid-code")
+      .catch(() => null),
+  ]);
+
+  if (mfaResult === "invalid-code") {
+    return SuccessMessage(res, "Incorrect code", { isValid: false, sessionId });
+  }
+
+  if (mfaResult === "success") {
+    const cookies = await page.cookies();
+    const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+    console.log("======== COOKIES OBJECT ========");
+    console.log(cookies);
+    console.log("======== COOKIE STRING =========");
+    console.log(cookieString);
+
+    return SuccessMessage(res, "MFA verified successfully.", {
+      isValid: true,
+    });
+  }
+
+  return next(new ErrorHandler("MFA failed or timed out", 500));
 });
