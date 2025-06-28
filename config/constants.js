@@ -26,7 +26,7 @@ export const notificationMessages = {
       body: "Your data has been synced successfully",
     },
     data: {
-      url: `${envVariables.frontendUrl}/repos`,
+      url: `${envVariables.frontendUrl}/`,
     },
   },
   syncDataFailure: {

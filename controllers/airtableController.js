@@ -9,6 +9,13 @@ import syncAirTableData from "../helpers/AirTableDataSync.js";
 import { randomUUID } from "crypto";
 import puppeteer from "puppeteer";
 import ErrorHandler from "../helpers/ErrorHandler.js";
+import mongoose from "mongoose";
+import flattenData from "../helpers/flattenData.js";
+import getAndStoreCookies from "../helpers/getAndStoreCookies.js";
+import AirTableBasesModel from "../models/AirTableBasesModel.js";
+import AirTablesModel from "../models/AirTablesModel.js";
+import AirTablesTicketModel from "../models/AirTableTicketsModel.js";
+import CookiesModel from "../models/CookiesModel.js";
 const {
   airtableCallback,
   airtableClientId,
@@ -48,6 +55,15 @@ export const connectAirtable = AsyncWrapper(async (req, res, next) => {
   const client = new AuthorizationCode(config);
   const state = req.user._id;
 
+  const integration = await AirTableModel.findOne({ userId: state });
+  if (integration) {
+    return next(
+      new ErrorHandler(
+        "You have already connected your airtable. Please remove it first and then try again",
+        403
+      )
+    );
+  }
   // Generate code verifier (random string)
   const codeVerifier = crypto.randomBytes(32).toString("hex");
 
@@ -116,6 +132,7 @@ export const airTableCallBack = AsyncWrapper(async (req, res, next) => {
 
 export const startScrapping = AsyncWrapper(async (req, res, next) => {
   const { email, password } = req.body;
+  const userId = req.user._id;
 
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
@@ -206,13 +223,24 @@ export const startScrapping = AsyncWrapper(async (req, res, next) => {
     });
   }
 
-  return SuccessMessage(res, "Scrapping started successfully", {
-    mfa: { required: false },
-  });
+  if (loginCheckResult === "success") {
+    const cookiesString = await getAndStoreCookies(page, userId);
+    await browser.close();
+    sessionMap.clear();
+    return SuccessMessage(res, "Logged in without MFA", {
+      mfa: { required: false },
+      dataScrap: "PENDING",
+    });
+  }
+
+  await browser.close();
+  return next(new ErrorHandler("Login failed or timed out", 500));
 });
 
 export const verifyMFA = AsyncWrapper(async (req, res, next) => {
   const { sessionId, code } = req.body;
+  const userId = req.user._id;
+
   const session = sessionMap.get(sessionId);
   if (!session) {
     return res.status(400).json({ error: "Invalid or expired session ID" });
@@ -253,18 +281,100 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
   }
 
   if (mfaResult === "success") {
-    const cookies = await page.cookies();
-    const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
-
-    console.log("======== COOKIES OBJECT ========");
-    console.log(cookies);
-    console.log("======== COOKIE STRING =========");
-    console.log(cookieString);
-
+    const cookiesString = await getAndStoreCookies(page, userId);
+    await browser.close();
+    sessionMap.clear();
     return SuccessMessage(res, "MFA verified successfully.", {
       isValid: true,
+      dataScrap: "PENDING",
     });
   }
-
+  await browser.close();
   return next(new ErrorHandler("MFA failed or timed out", 500));
+});
+
+export const getAllCollections = AsyncWrapper(async (req, res, next) => {
+  const userData = await UserModel.findById(req.user._id).populate("airTable");
+  if (!userData?.airTable || userData?.airTable?.dataSync !== "COMPLETED") {
+    return next(
+      new ErrorHandler(
+        "You have not connected AirTable yet or the data is not sync yet",
+        400
+      )
+    );
+  }
+
+  const collections = await mongoose.connection.db.listCollections().toArray();
+  const collectionNames = collections
+    .filter(
+      (col) =>
+        col.name.toLowerCase().includes("airtable") &&
+        col.name.toLowerCase() !== "airtableintegrations"
+    )
+    .map((col) => col.name);
+
+  return SuccessMessage(res, "Collection fetched successfully", {
+    collectionNames,
+  });
+});
+
+export const getSingleCollectionData = AsyncWrapper(async (req, res, next) => {
+  const { collectionName } = req.params;
+  const userId = req.user._id;
+  const { page = 1, limit = 20 } = req.query;
+
+  const collections = await mongoose.connection.db.listCollections().toArray();
+  const collectionNames = collections
+    .filter(
+      (col) =>
+        col.name.toLowerCase().includes("airtable") &&
+        col.name.toLowerCase() !== "airtableintegrations"
+    )
+    .map((col) => col.name);
+
+  const matchedCollection = collectionNames.find(
+    (colName) => colName.toLowerCase() === collectionName.toLowerCase()
+  );
+
+  if (!matchedCollection) {
+    return next(new ErrorHandler("Collection not found", 404));
+  }
+
+  const skip = (page - 1) * limit;
+
+  const CollectionModel = mongoose.connection.db.collection(matchedCollection);
+  let data = await CollectionModel.find({
+    userId: new mongoose.Types.ObjectId(userId),
+  })
+    .skip(skip)
+    .limit(parseInt(limit))
+    .toArray();
+
+  data = data.map((item) => flattenData(item));
+  const total = await CollectionModel.countDocuments({
+    userId: new mongoose.Types.ObjectId(userId),
+  });
+  return SuccessMessage(res, "Collection data fetched successfully", {
+    data,
+    currentPage: parseInt(page),
+    totalPages: Math.ceil(total / limit),
+    totalItems: total,
+    itemsPerPage: parseInt(limit),
+  });
+});
+
+export const removeAirTableData = AsyncWrapper(async (req, res, next) => {
+  const userId = req.user._id;
+  const integration = await AirTableModel.findOne({ userId });
+  if (!integration) {
+    return next(new ErrorHandler("You havenot connected AirTable", 400));
+  }
+
+  await AirTableBasesModel.deleteMany({ userId });
+  await AirTablesModel.deleteMany({ userId });
+  await AirTablesTicketModel.deleteMany({ userId });
+  await CookiesModel.deleteOne({ userId });
+  await AirTableModel.deleteOne({ userId });
+
+  return SuccessMessage(res, "Your data has been delete successfully");
 });

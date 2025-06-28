@@ -9,7 +9,7 @@ webpush.setVapidDetails(
   vapidPrivatekey
 );
 
-async function sendGithubSyncNotification(userId) {
+async function sendAirTableDataSyncSuccess(userId) {
   const subscriptionData = await SubscriptionModel.findOne({ userId });
   await webpush.sendNotification(
     subscriptionData.subscription,
@@ -17,7 +17,7 @@ async function sendGithubSyncNotification(userId) {
   );
 }
 
-export async function sendGithubSyncFailureNotification(userId) {
+export async function sendAirTableDataSyncFailure(userId) {
   const subscriptionData = await SubscriptionModel.findOne({ userId });
   await webpush.sendNotification(
     subscriptionData.subscription,
@@ -25,4 +25,4 @@ export async function sendGithubSyncFailureNotification(userId) {
   );
 }
 
-export default sendGithubSyncNotification;
+export default sendAirTableDataSyncSuccess;

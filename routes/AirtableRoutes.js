@@ -2,6 +2,9 @@ import { Router } from "express";
 import {
   airTableCallBack,
   connectAirtable,
+  getAllCollections,
+  getSingleCollectionData,
+  removeAirTableData,
   startScrapping,
   verifyMFA,
 } from "../controllers/airtableController.js";
@@ -18,5 +21,8 @@ router.post("/", auth, connectAirtable);
 router.get("/callback", airTableCallBack);
 router.post("/login", auth, validateBody(airtableLoginSchema), startScrapping);
 router.post("/mfa", auth, validateBody(airtableMFASchema), verifyMFA);
+router.get("/collections", auth, getAllCollections);
+router.get("/collection/:collectionName", auth, getSingleCollectionData);
+router.delete("/", auth, removeAirTableData);
 
 export default router;

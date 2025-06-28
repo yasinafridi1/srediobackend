@@ -34,6 +34,12 @@ export const userDto = (user) => {
     fullName: user.fullName,
     email: user.email,
     role: user.role,
-    airTable: user?.airTable ? user.airTable.dataSync : null,
+    airTable: user?.airTable
+      ? {
+          dataSync: user.airTable.dataSync,
+          dataScrap: user.airTable.dataScrap,
+          createdAt: formatDateTime(user.airTable.createdAt),
+        }
+      : null,
   };
 };

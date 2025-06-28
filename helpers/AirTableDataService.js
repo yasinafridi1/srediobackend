@@ -52,7 +52,6 @@ class AirTableDataService {
     const response = await this.apiService.client.get(`/${baseId}/${tableId}`, {
       params,
     });
-    console.log(response.data.records.length);
     return response?.data || {};
   }
 

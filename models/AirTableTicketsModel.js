@@ -6,17 +6,25 @@ const ticketSchema = new mongoose.Schema({
     ref: "User",
     default: null,
   },
-  baseId: {
+  baseDocId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "AirtableBases",
     default: null,
   },
-  tableId: {
+  tableDocId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "AirTables",
     default: null,
   },
+  tableId: String,
+  baseId: String,
   rawData: { type: mongoose.Schema.Types.Mixed },
+  recordId: String,
+  scrapingStatus: {
+    type: String,
+    enum: ["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"],
+    default: "PENDING",
+  },
 });
 
 const AirTablesTicketModel = mongoose.model("AirtablesTickets", ticketSchema);

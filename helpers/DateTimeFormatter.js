@@ -1,5 +1,3 @@
-const connectedAt = "2025-06-17T14:12:27.188Z";
-
 export const formatDateTime = (isoString) => {
   const date = new Date(isoString);
 
@@ -13,6 +11,5 @@ export const formatDateTime = (isoString) => {
 
   hours = hours % 12 || 12; // Convert to 12-hour format and handle midnight
   const formattedTime = `${String(hours).padStart(2, "0")}:${minutes}${ampm}`;
-
   return `${year}-${month}-${day} ${formattedTime}`;
 };

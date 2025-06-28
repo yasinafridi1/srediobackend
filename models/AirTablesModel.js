@@ -6,11 +6,12 @@ const tablesSchema = new mongoose.Schema({
     ref: "User",
     default: null,
   },
-  baseId: {
+  baseDocId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "AirtableBases",
     default: null,
   },
+  baseId: String,
   rawData: { type: mongoose.Schema.Types.Mixed },
 });
 

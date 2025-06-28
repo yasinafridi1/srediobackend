@@ -11,10 +11,11 @@ export const structureBases = (data, userId) => {
   return structureData;
 };
 
-export const structureTables = (data, baseId, userId) => {
+export const structureTables = (data, baseDocId, userId, baseId) => {
   const structureData = data.map((item) => {
     return {
       userId,
+      baseDocId,
       baseId,
       rawData: item,
     };
@@ -22,12 +23,22 @@ export const structureTables = (data, baseId, userId) => {
   return structureData;
 };
 
-export const structureTickets = (data, baseId, tableId, userId) => {
+export const structureTickets = (
+  data,
+  baseDocId,
+  baseId,
+  tableDocId,
+  tableId,
+  userId
+) => {
   const structureData = data.map((item) => {
     return {
       userId,
+      baseDocId,
+      tableDocId,
       baseId,
       tableId,
+      recordId: item?.id,
       rawData: item,
     };
   });
