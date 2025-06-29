@@ -33,4 +33,12 @@ export async function sendScrapingSuccess(userId) {
   );
 }
 
+export async function sendScrapingFailure(userId) {
+  const subscriptionData = await SubscriptionModel.findOne({ userId });
+  await webpush.sendNotification(
+    subscriptionData.subscription,
+    JSON.stringify(notificationMessages.scrapFailure)
+  );
+}
+
 export default sendAirTableDataSyncSuccess;

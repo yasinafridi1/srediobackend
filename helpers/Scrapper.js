@@ -1,5 +1,6 @@
 import AirTableModel from "../models/AirTableTokens.js";
 import AirTablesModel from "../models/AirTablesModel.js";
+import { sendScrapingSuccess } from "./NotificationService.js";
 import loadGridView from "./gridView.js";
 
 const scrapper = async (userId, browser, page) => {
@@ -20,10 +21,10 @@ const scrapper = async (userId, browser, page) => {
         const url = `https://airtable.com/${baseId}/${tableId}/${view.id}?blocks=hide`;
         await loadGridView(page, url, userId);
       }
-
-      await browser.close();
-      await AirTableModel.updateOne({ userId }, { dataScrap: "COMPLETED" });
     }
+    await browser.close();
+    await AirTableModel.updateOne({ userId }, { dataScrap: "COMPLETED" });
+    await sendScrapingSuccess(userId);
   } catch (error) {
     console.log("Something went wrong while scrapping revision history", error);
   }

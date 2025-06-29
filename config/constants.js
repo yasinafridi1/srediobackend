@@ -40,11 +40,20 @@ export const notificationMessages = {
   },
   scrapDataSuccess: {
     notification: {
-      title: "Data Scrap",
+      title: "Data Scrap succeed",
       body: "The revision history has been scrapped and store successfully. Pelase reload your application",
     },
     data: {
       url: `${envVariables.frontendUrl}/`,
+    },
+  },
+  scrapFailure: {
+    notification: {
+      title: "Data Scrap failed",
+      body: "Revision scrapping has been due to some reason. Please try again",
+    },
+    data: {
+      url: `${envVariables.frontendUrl}/airtable`,
     },
   },
 };

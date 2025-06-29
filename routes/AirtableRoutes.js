@@ -7,6 +7,7 @@ import {
   removeAirTableData,
   loginAirTable,
   verifyMFA,
+  revisionPerRecords,
 } from "../controllers/airtableController.js";
 import auth from "../middlewares/Auth.js";
 import validateBody from "../middlewares/Validator.js";
@@ -24,5 +25,6 @@ router.post("/mfa", auth, validateBody(airtableMFASchema), verifyMFA);
 router.get("/collections", auth, getAllCollections);
 router.get("/collection/:collectionName", auth, getSingleCollectionData);
 router.delete("/", auth, removeAirTableData);
+router.get("/revision/history/:recordId", auth, revisionPerRecords);
 
 export default router;

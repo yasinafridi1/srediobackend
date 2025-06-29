@@ -71,7 +71,7 @@ const loadGridView = async (page, pageUrl, userId) => {
         (res) =>
           res.url().includes("/readRowActivitiesAndComments") &&
           res.status() === 200,
-        { timeout: 10000 }
+        { timeout: 100000 }
       );
     } catch (e) {
       console.log(`⚠️ Row ${i + 1} - Activity feed may have failed to open.`);
@@ -100,7 +100,7 @@ const loadGridView = async (page, pageUrl, userId) => {
     // Try to close the modal
     try {
       await page.waitForSelector('[aria-label="Close dialog"]', {
-        timeout: 10000,
+        timeout: 20000,
       });
       await page.click('[aria-label="Close dialog"]');
       await new Promise((r) => setTimeout(r, 500));

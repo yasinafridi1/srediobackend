@@ -43,3 +43,16 @@ export const userDto = (user) => {
       : null,
   };
 };
+
+export const revisionDTO = (data) => {
+  return {
+    uuid: data?.uuid,
+    issueId: data?.issueId,
+    column: data?.column,
+    columnType: data?.columnType,
+    oldValue: data?.oldValue,
+    newValue: data?.newValue,
+    createdDate: data?.createdDate ? formatDateTime(data?.createdDate) : null,
+    authoredBy: data?.authoredBy,
+  };
+};

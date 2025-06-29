@@ -17,6 +17,8 @@ import AirTablesTicketModel from "../models/AirTableTicketsModel.js";
 import scrapper from "../helpers/Scrapper.js";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import AirTableRevisionModel from "../models/AirTableRevisionModel.js";
+import { revisionDTO } from "../helpers/Dto.js";
 puppeteer.use(StealthPlugin());
 
 const {
@@ -158,7 +160,7 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
     // Valid email → page moves to password
     page
       .waitForFunction(() => window.location.hash === "#password", {
-        timeout: 600000,
+        timeout: 900000,
       })
       .then(() => "valid")
       .catch(() => null),
@@ -176,7 +178,7 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
           );
           return !!error;
         },
-        { timeout: 600000 }
+        { timeout: 900000 }
       )
       .then(() => "invalid")
       .catch(() => null),
@@ -195,13 +197,13 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
   const loginCheckResult = await Promise.race([
     // MFA input appears
     page
-      .waitForSelector('input[name="code"]', { timeout: 30000 })
+      .waitForSelector('input[name="code"]', { timeout: 90000 })
       .then(() => "mfa")
       .catch(() => null),
 
     // Navigation = success
     page
-      .waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 })
+      .waitForNavigation({ waitUntil: "networkidle2", timeout: 90000 })
       .then(() => "success")
       .catch(() => null),
 
@@ -216,7 +218,7 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
           );
           return !!error;
         },
-        { timeout: 30000 }
+        { timeout: 90000 }
       )
       .then(() => "invalid-password")
       .catch(() => null),
@@ -279,7 +281,7 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
 
   const mfaResult = await Promise.race([
     page
-      .waitForNavigation({ waitUntil: "networkidle2", timeout: 30000 })
+      .waitForNavigation({ waitUntil: "networkidle2", timeout: 90000 })
       .then(() => "success")
       .catch(() => null),
 
@@ -291,7 +293,7 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
           ).find((e) => e.textContent?.trim().toLowerCase() === "invalid code");
           return !!el;
         },
-        { timeout: 15000 }
+        { timeout: 90000 }
       )
       .then(() => "invalid-code")
       .catch(() => null),
@@ -378,7 +380,12 @@ export const getSingleCollectionData = AsyncWrapper(async (req, res, next) => {
     .limit(parseInt(limit))
     .toArray();
 
-  data = data.map((item) => flattenData(item));
+  if (collectionName.toLowerCase() === "airtablerevisions") {
+    data = data.map((item) => revisionDTO(item));
+  } else {
+    data = data.map((item) => flattenData(item));
+  }
+
   const total = await CollectionModel.countDocuments({
     userId: new mongoose.Types.ObjectId(userId),
   });
@@ -402,6 +409,33 @@ export const removeAirTableData = AsyncWrapper(async (req, res, next) => {
   await AirTablesModel.deleteMany({ userId });
   await AirTablesTicketModel.deleteMany({ userId });
   await AirTableModel.deleteOne({ userId });
+  await AirTableRevisionModel.deleteMany({ userId });
 
   return SuccessMessage(res, "Your data has been delete successfully");
+});
+
+export const revisionPerRecords = AsyncWrapper(async (req, res, next) => {
+  const userId = req.user._id;
+  const { recordId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
+  const skip = (page - 1) * limit;
+  let revisionData = await AirTableRevisionModel.find({
+    userId: userId,
+    issueId: recordId,
+  })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+  const total = await AirTableRevisionModel.countDocuments({
+    userId: userId,
+    issueId: recordId,
+  });
+  revisionData = revisionData.map((item) => revisionDTO(item));
+  return SuccessMessage(res, "Revision history fetched successfully", {
+    revisionData,
+    currentPage: parseInt(page),
+    totalPages: Math.ceil(total / limit),
+    totalItems: total,
+    itemsPerPage: parseInt(limit),
+  });
 });
