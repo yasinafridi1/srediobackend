@@ -25,4 +25,12 @@ export async function sendAirTableDataSyncFailure(userId) {
   );
 }
 
+export async function sendScrapingSuccess(userId) {
+  const subscriptionData = await SubscriptionModel.findOne({ userId });
+  await webpush.sendNotification(
+    subscriptionData.subscription,
+    JSON.stringify(notificationMessages.scrapDataSuccess)
+  );
+}
+
 export default sendAirTableDataSyncSuccess;

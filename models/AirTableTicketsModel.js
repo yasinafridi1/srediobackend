@@ -20,11 +20,11 @@ const ticketSchema = new mongoose.Schema({
   baseId: String,
   rawData: { type: mongoose.Schema.Types.Mixed },
   recordId: String,
-  scrapingStatus: {
-    type: String,
-    enum: ["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"],
-    default: "PENDING",
-  },
+  // scrapingStatus: {
+  //   type: String,
+  //   enum: ["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"],
+  //   default: "PENDING",
+  // },
 });
 
 const AirTablesTicketModel = mongoose.model("AirtablesTickets", ticketSchema);

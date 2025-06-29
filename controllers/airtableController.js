@@ -7,15 +7,18 @@ import AirTableModel from "../models/AirTableTokens.js";
 import UserModel from "../models/UserModel.js";
 import syncAirTableData from "../helpers/AirTableDataSync.js";
 import { randomUUID } from "crypto";
-import puppeteer from "puppeteer";
+// import puppeteer from "puppeteer";
 import ErrorHandler from "../helpers/ErrorHandler.js";
 import mongoose from "mongoose";
 import flattenData from "../helpers/flattenData.js";
-import getAndStoreCookies from "../helpers/getAndStoreCookies.js";
 import AirTableBasesModel from "../models/AirTableBasesModel.js";
 import AirTablesModel from "../models/AirTablesModel.js";
 import AirTablesTicketModel from "../models/AirTableTicketsModel.js";
-import CookiesModel from "../models/CookiesModel.js";
+import scrapper from "../helpers/Scrapper.js";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+puppeteer.use(StealthPlugin());
+
 const {
   airtableCallback,
   airtableClientId,
@@ -130,12 +133,22 @@ export const airTableCallBack = AsyncWrapper(async (req, res, next) => {
   return res.redirect(`${frontendUrl}/profile`);
 });
 
-export const startScrapping = AsyncWrapper(async (req, res, next) => {
+export const loginAirTable = AsyncWrapper(async (req, res, next) => {
   const { email, password } = req.body;
   const userId = req.user._id;
 
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
   const page = await browser.newPage();
+
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+      "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+  );
+  await page.setViewport({ width: 1280, height: 800 });
 
   await page.goto("https://airtable.com/login", { waitUntil: "networkidle2" });
   await page.type('input[type="email"]', email);
@@ -145,7 +158,7 @@ export const startScrapping = AsyncWrapper(async (req, res, next) => {
     // Valid email → page moves to password
     page
       .waitForFunction(() => window.location.hash === "#password", {
-        timeout: 30000,
+        timeout: 600000,
       })
       .then(() => "valid")
       .catch(() => null),
@@ -163,7 +176,7 @@ export const startScrapping = AsyncWrapper(async (req, res, next) => {
           );
           return !!error;
         },
-        { timeout: 30000 }
+        { timeout: 600000 }
       )
       .then(() => "invalid")
       .catch(() => null),
@@ -224,10 +237,18 @@ export const startScrapping = AsyncWrapper(async (req, res, next) => {
   }
 
   if (loginCheckResult === "success") {
-    const cookiesString = await getAndStoreCookies(page, userId);
-    await browser.close();
-    sessionMap.clear();
-    return SuccessMessage(res, "Logged in without MFA", {
+    setImmediate(() => {
+      scrapper(userId, browser, page)
+        .then(() => {
+          sessionMap.clear();
+          console.log("scrapping completed successfully");
+        })
+        .catch((err) => {
+          console.error("Error scrapping airtable:", err);
+        });
+    });
+
+    return SuccessMessage(res, "AirTable Logged in", {
       mfa: { required: false },
       dataScrap: "PENDING",
     });
@@ -281,9 +302,16 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
   }
 
   if (mfaResult === "success") {
-    const cookiesString = await getAndStoreCookies(page, userId);
-    await browser.close();
-    sessionMap.clear();
+    setImmediate(() => {
+      scrapper(userId, browser, page)
+        .then(() => {
+          sessionMap.clear();
+          console.log("scrapping completed successfully");
+        })
+        .catch((err) => {
+          console.error("Error scrapping airtable:", err);
+        });
+    });
     return SuccessMessage(res, "MFA verified successfully.", {
       isValid: true,
       dataScrap: "PENDING",
@@ -373,7 +401,6 @@ export const removeAirTableData = AsyncWrapper(async (req, res, next) => {
   await AirTableBasesModel.deleteMany({ userId });
   await AirTablesModel.deleteMany({ userId });
   await AirTablesTicketModel.deleteMany({ userId });
-  await CookiesModel.deleteOne({ userId });
   await AirTableModel.deleteOne({ userId });
 
   return SuccessMessage(res, "Your data has been delete successfully");

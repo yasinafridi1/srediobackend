@@ -38,4 +38,13 @@ export const notificationMessages = {
       url: `${envVariables.frontendUrl}/profile`,
     },
   },
+  scrapDataSuccess: {
+    notification: {
+      title: "Data Scrap",
+      body: "The revision history has been scrapped and store successfully. Pelase reload your application",
+    },
+    data: {
+      url: `${envVariables.frontendUrl}/`,
+    },
+  },
 };
