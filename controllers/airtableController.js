@@ -250,10 +250,14 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
         });
     });
 
-    return SuccessMessage(res, "AirTable Logged in", {
-      mfa: { required: false },
-      dataScrap: "PENDING",
-    });
+    return SuccessMessage(
+      res,
+      "Scrapping started successfully. We will send a notification when scrapping is completed.",
+      {
+        mfa: { required: false },
+        dataScrap: "PENDING",
+      }
+    );
   }
 
   await browser.close();
