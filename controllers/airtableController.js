@@ -140,7 +140,7 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
   const userId = req.user._id;
 
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: false,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
@@ -273,10 +273,17 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
   }
 
   const { page, browser } = session;
-  // Clear the input before typing the code (optional, in case of retries)
+
+  // ✅ Clear the input and stale error before typing code
   await page.evaluate(() => {
     const input = document.querySelector('input[name="code"]');
     if (input) input.value = "";
+
+    const errorEl = Array.from(
+      document.querySelectorAll("div.small.strong.quiet")
+    ).find((e) => e.textContent?.trim().toLowerCase() === "invalid code");
+
+    if (errorEl) errorEl.textContent = ""; // Clear old error message
   });
 
   await page.type('input[name="code"]', code, { delay: 300 });
@@ -294,7 +301,7 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
           const el = Array.from(
             document.querySelectorAll("div.small.strong.quiet")
           ).find((e) => e.textContent?.trim().toLowerCase() === "invalid code");
-          return !!el;
+          return el && el.offsetParent !== null; // Ensure it's visible
         },
         { timeout: 90000 }
       )
@@ -326,6 +333,7 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
       }
     );
   }
+
   await browser.close();
   return next(new ErrorHandler("MFA failed or timed out", 500));
 });

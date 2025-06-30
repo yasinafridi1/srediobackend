@@ -5,6 +5,7 @@ import loadGridView from "./gridView.js";
 
 const scrapper = async (userId, browser, page) => {
   try {
+    await AirTableModel.updateOne({ userId }, { dataScrap: "PENDING" });
     const tables = await AirTablesModel.find({ userId });
 
     if (!tables.length) {
