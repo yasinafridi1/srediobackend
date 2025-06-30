@@ -49,7 +49,6 @@ const syncAirTableData = async (data) => {
         await processTables(base, airTableDataService);
       }
       await AirTablesTicketModel.insertMany(allRecords);
-      // const users = await airTableDataService.getUsers();
       await AirTableModel.updateOne({ _id }, { dataSync: "COMPLETED" });
       await sendAirTableDataSyncSuccess(userId);
     }

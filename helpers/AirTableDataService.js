@@ -56,15 +56,6 @@ class AirTableDataService {
   }
 
   /**
-   * Get all users
-   * @returns {Promise<Array>} List of users
-   */
-  async getUsers() {
-    const response = await this.apiService.client.get("/Users");
-    return response?.data?.records || [];
-  }
-
-  /**
    * Get all records from a table with automatic pagination
    * @param {string} baseId - The ID of the base
    * @param {string} tableId - The ID of the table
