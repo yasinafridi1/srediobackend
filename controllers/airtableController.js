@@ -249,10 +249,9 @@ export const loginAirTable = AsyncWrapper(async (req, res, next) => {
           console.error("Error scrapping airtable:", err);
         });
     });
-
     return SuccessMessage(
       res,
-      "Scrapping started successfully. We will send a notification when scrapping is completed.",
+      "We will send a notification when scrapping is completed. You can perform other task until the scrapping completed",
       {
         mfa: { required: false },
         dataScrap: "PENDING",
@@ -318,10 +317,14 @@ export const verifyMFA = AsyncWrapper(async (req, res, next) => {
           console.error("Error scrapping airtable:", err);
         });
     });
-    return SuccessMessage(res, "MFA verified successfully.", {
-      isValid: true,
-      dataScrap: "PENDING",
-    });
+    return SuccessMessage(
+      res,
+      "We will send a notification when scrapping is completed. You can perform other task until the scrapping completed.",
+      {
+        isValid: true,
+        dataScrap: "PENDING",
+      }
+    );
   }
   await browser.close();
   return next(new ErrorHandler("MFA failed or timed out", 500));
